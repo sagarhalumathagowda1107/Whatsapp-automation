@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: whatsapp_reports_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: whatsapp_reports
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: whatsapp_reports_app
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+psycopg://postgres:postgrespassword@db:5432/whatsapp_reports
+      - ADMIN_API_KEY=admin-secret-key-change-me
+      - WHATSAPP_ACCESS_TOKEN=${WHATSAPP_ACCESS_TOKEN:-mock_token}
+      - WHATSAPP_PHONE_NUMBER_ID=${WHATSAPP_PHONE_NUMBER_ID:-mock_phone_number_id}
+      - WHATSAPP_BUSINESS_ACCOUNT_ID=${WHATSAPP_BUSINESS_ACCOUNT_ID:-mock_business_account_id}
+      - WHATSAPP_VERIFY_TOKEN=${WHATSAPP_VERIFY_TOKEN:-mock_verify_token}
+      - WHATSAPP_API_VERSION=${WHATSAPP_API_VERSION:-v20.0}
+      - REPORT_DAY=${REPORT_DAY:-MONDAY}
+      - REPORT_TIME=${REPORT_TIME:-09:00}
+      - REPORT_TIMEZONE=${REPORT_TIMEZONE:-Asia/Kolkata}
+      - REPORT_STORAGE_PATH=reports/generated
+      - WHATSAPP_MOCK_MODE=${WHATSAPP_MOCK_MODE:-false}
+    volumes:
+      - generated_reports:/app/reports/generated
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  generated_reports:
